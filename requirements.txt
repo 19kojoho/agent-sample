@@ -1,0 +1,20 @@
+python-dotenv>=1.0.0
+
+# Bedrock client (shared by both agents)
+boto3>=1.35.0
+botocore>=1.35.0
+
+# Galileo SDK (native callback for LangGraph; OTel endpoint for Strands)
+galileo>=1.0.0
+
+# LangGraph agent dependencies
+langgraph>=0.2.0
+langchain-core>=0.3.0
+langchain-aws>=0.2.0
+
+# Strands agent dependencies
+strands-agents>=0.1.0
+strands-agents-tools>=0.1.0
+opentelemetry-api>=1.27.0
+opentelemetry-sdk>=1.27.0
+opentelemetry-exporter-otlp>=1.27.0
