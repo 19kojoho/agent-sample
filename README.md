@@ -195,6 +195,51 @@ step, such as a tool that writes to a database, wrap it with
 With `GUARDRAILS_ENABLED=false` (the default) the checkpoints are skipped and
 the agents behave exactly as before.
 
+### How Agent Control works
+
+**A control has three parts.** You can see all three in `_controls()` in
+`setup_guardrails.py`.
+
+- **Scope**: which steps it applies to (`step_names`, `step_types`, or a
+  `step_name_regex`) and when: `pre` (before the step runs, on its input) or
+  `post` (after, on its output).
+- **Condition**: a *selector* picks the data to check (`input`, `output`, or
+  `*` for both) and an *evaluator* scores it. Evaluators include `regex`,
+  `list`, `json`, `sql`, and `galileo.luna`. Conditions can be combined with
+  `and`, `or`, and `not`.
+- **Action**: what happens when the condition matches.
+  - `deny` raises `ControlViolationError` and the step does not run.
+  - `steer` raises `ControlSteerError` carrying a steering message, and your
+    code decides what to do with it. Here, the message replaces the briefing.
+  - `observe` records the match and lets the step continue.
+
+  If several controls match, deny takes priority over steer, and steer over
+  observe.
+
+**Where a control runs.** Each control has `execution: sdk` or
+`execution: server`. SDK controls are evaluated inside the agent process;
+server controls are sent to the Agent Control server with the step's input
+and output. The Luna evaluator calls Galileo's Luna service with credentials
+that live on the Galileo side, so Luna controls use `execution: server`.
+
+**How controls reach the agent.**
+
+1. On startup, `agent_control.init()` registers the agent by name and fetches
+   the controls that apply to it. That set combines three sources: controls
+   attached directly to the agent, controls in policies (named groups of
+   controls) attached to the agent, and controls bound to the target the
+   agent passes. This sample passes its Galileo log stream as the target.
+2. `setup_guardrails.py` creates each control, then binds a copy of it to the
+   log stream. The bound copy is the one that runs; its name ends with the
+   first eight characters of the log stream ID. **Edit that copy when you
+   tune a threshold or change an action.**
+3. The SDK fetches the controls again every 60 seconds, so changes made in
+   the console reach a running agent without a restart.
+
+**If a check itself fails**, for example because the server is unreachable
+or the API key is wrong, the SDK raises an error and the step does not run.
+Guardrails fail closed.
+
 ## Project layout
 
 ```
