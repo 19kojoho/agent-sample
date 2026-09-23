@@ -14,7 +14,7 @@ import sys
 
 from dotenv import load_dotenv
 from langchain_aws import ChatBedrockConverse
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
@@ -22,6 +22,7 @@ from langgraph.prebuilt import create_react_agent
 from galileo import galileo_context
 from galileo.handlers.langchain import GalileoCallback
 
+from common.guardrails import check_briefing, screen_question
 from common.tools import (
     SYSTEM_PROMPT,
     lookup_issuer_profile,
@@ -64,6 +65,10 @@ def build_agent():
 
 
 def run(question: str) -> str:
+    blocked = screen_question(question)
+    if blocked:
+        return blocked
+
     agent = build_agent()
     callback = GalileoCallback()
     config = RunnableConfig(callbacks=[callback])
@@ -76,7 +81,9 @@ def run(question: str) -> str:
             {"messages": [HumanMessage(content=question)]},
             config=config,
         )
-    return result["messages"][-1].content
+    briefing = result["messages"][-1].content
+    tool_outputs = [m.content for m in result["messages"] if isinstance(m, ToolMessage)]
+    return check_briefing(question, tool_outputs, briefing)
 
 
 def main() -> None:

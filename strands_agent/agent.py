@@ -19,6 +19,7 @@ from strands import Agent, tool
 from strands.models.bedrock import BedrockModel
 from strands.telemetry import StrandsTelemetry
 
+from common.guardrails import check_briefing, screen_question
 from common.tools import (
     SYSTEM_PROMPT,
     lookup_issuer_profile,
@@ -76,10 +77,29 @@ def build_agent() -> Agent:
     )
 
 
+def _tool_outputs(agent: Agent) -> list:
+    """Collect every tool result from the conversation Strands just ran."""
+    outputs = []
+    for message in agent.messages:
+        for block in message.get("content", []):
+            for item in block.get("toolResult", {}).get("content", []):
+                outputs.append(item.get("json", item.get("text")))
+    return outputs
+
+
+def run(question: str) -> str:
+    blocked = screen_question(question)
+    if blocked:
+        return blocked
+
+    agent = build_agent()
+    briefing = str(agent(question))
+    return check_briefing(question, _tool_outputs(agent), briefing)
+
+
 def main() -> None:
     load_dotenv()
     _configure_galileo_otel()
-    agent = build_agent()
 
     question = (
         " ".join(sys.argv[1:])
@@ -87,8 +107,8 @@ def main() -> None:
         else "Give me a credit briefing on The Boeing Company. What is the recent trajectory?"
     )
     print(f"\nQ: {question}\n")
-    result = agent(question)
-    print(f"\nA: {result}\n")
+    answer = run(question)
+    print(f"\nA: {answer}\n")
 
 
 if __name__ == "__main__":

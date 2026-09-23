@@ -7,6 +7,9 @@ botocore>=1.35.0
 # Galileo SDK (native callback for LangGraph; OTel endpoint for Strands)
 galileo>=1.0.0
 
+# Runtime guardrails (Agent Control, Luna scored server-side)
+agent-control-sdk>=8.4.0
+
 # LangGraph agent dependencies
 langgraph>=0.2.0
 langchain-core>=0.3.0
